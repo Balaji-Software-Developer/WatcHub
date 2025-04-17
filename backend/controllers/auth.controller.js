@@ -7,7 +7,7 @@ export async function signup(req, res) {
 		const { email, password, username } = req.body;
 
 		if (!email || !password || !username) {
-			return res.status(400).json({ success: false, message: "All fields are required" });
+			return res.status(400).json({ success: false, message: "All fields are required" });x
 		}
 
 		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
