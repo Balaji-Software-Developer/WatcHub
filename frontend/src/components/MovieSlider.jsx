@@ -3,12 +3,13 @@ import { useContentStore } from "../store/content";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import { SMALL_IMG_BASE_URL } from "../utils/constants";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download } from "lucide-react";
 
 const MovieSlider = ({ category }) => {
 	const { contentType } = useContentStore();
 	const [content, setContent] = useState([]);
 	const [showArrows, setShowArrows] = useState(false);
+	const [downloading, setDownloading] = useState({});
 
 	const sliderRef = useRef(null);
 
@@ -30,8 +31,38 @@ const MovieSlider = ({ category }) => {
 			sliderRef.current.scrollBy({ left: -sliderRef.current.offsetWidth, behavior: "smooth" });
 		}
 	};
+	
 	const scrollRight = () => {
 		sliderRef.current.scrollBy({ left: sliderRef.current.offsetWidth, behavior: "smooth" });
+	};
+
+	const handleDownload = async (e, item) => {
+		e.preventDefault(); // Prevent navigation
+		e.stopPropagation(); // Prevent event bubbling
+		
+		try {
+			setDownloading(prev => ({ ...prev, [item.id]: true }));
+			
+			const response = await axios.get(`/api/v1/download/${contentType}/${item.id}`, {
+				responseType: 'blob',
+			});
+			
+			const url = window.URL.createObjectURL(new Blob([response.data]));
+			const link = document.createElement('a');
+			const title = item.title || item.name;
+			const filename = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.mp4`;
+			
+			link.href = url;
+			link.setAttribute('download', filename);
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+		} catch (error) {
+			console.error('Download failed:', error);
+			alert('Download failed. Please try again later.');
+		} finally {
+			setDownloading(prev => ({ ...prev, [item.id]: false }));
+		}
 	};
 
 	return (
@@ -46,16 +77,29 @@ const MovieSlider = ({ category }) => {
 
 			<div className='flex space-x-4 overflow-x-scroll scrollbar-hide' ref={sliderRef}>
 				{content.map((item) => (
-					<Link to={`/watch/${item.id}`} className='min-w-[250px] relative group' key={item.id}>
-						<div className='rounded-lg overflow-hidden'>
-							<img
-								src={SMALL_IMG_BASE_URL + item.backdrop_path}
-								alt='Movie image'
-								className='transition-transform duration-300 ease-in-out group-hover:scale-125'
-							/>
-						</div>
-						<p className='mt-2 text-center'>{item.title || item.name}</p>
-					</Link>
+					<div className='min-w-[250px] relative group' key={item.id}>
+						<Link to={`/watch/${item.id}`} className='block'>
+							<div className='rounded-lg overflow-hidden'>
+								<img
+									src={SMALL_IMG_BASE_URL + item.backdrop_path}
+									alt='Movie image'
+									className='transition-transform duration-300 ease-in-out group-hover:scale-125'
+								/>
+							</div>
+							<p className='mt-2 text-center'>{item.title || item.name}</p>
+						</Link>
+						
+						{/* Download Button */}
+						<button 
+							onClick={(e) => handleDownload(e, item)}
+							disabled={downloading[item.id]}
+							className='absolute bottom-10 right-2 bg-black bg-opacity-70 hover:bg-opacity-90 
+								text-white rounded-full p-2 transition-opacity opacity-0 group-hover:opacity-100'
+							title="Download"
+						>
+							<Download size={18} className={downloading[item.id] ? 'animate-pulse' : ''} />
+						</button>
+					</div>
 				))}
 			</div>
 
