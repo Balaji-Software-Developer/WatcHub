@@ -4,7 +4,6 @@ import { Link } from "react-router-dom";
 import { LogOut, Menu, Search } from "lucide-react";
 import { useAuthStore } from "../store/authUser";
 import { useContentStore } from "../store/content";
-import VoiceAssistant from "./VoiceAssistant"; // Import the Voice Assistant component
 
 const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -36,9 +35,6 @@ const Navbar = () => {
       </div>
 
       <div className='flex gap-5 items-center z-50'>
-        {/* Voice Assistant component */}
-        <VoiceAssistant />
-        
         <Link to={"/search"}>
           <Search className='size-6 cursor-pointer' />
         </Link>

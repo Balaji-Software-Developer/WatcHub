@@ -1,9 +1,8 @@
-// backend/controllers/voiceCommandController.js
-import axios from 'axios';
-import { searchMovies, searchTvShows, searchPerson } from './searchController.js';
+// Backend/controllers/voiceCommandController.js
+import { fetchFromTMDB } from "../services/tmdb.service.js";
+import { User } from "../models/user.model.js";
 
-// Process voice commands from the client
-export const processVoiceCommand = async (req, res) => {
+export async function processVoiceCommand(req, res) {
   try {
     const { command } = req.body;
     
@@ -21,7 +20,7 @@ export const processVoiceCommand = async (req, res) => {
     switch (action.type) {
       case 'SEARCH':
         // Handle search command
-        result = await handleSearchCommand(action.term, action.mediaType || 'movie');
+        result = await handleSearchCommand(action.term, action.mediaType, req.user);
         break;
       case 'NAVIGATE':
         // Handle navigation command
@@ -31,13 +30,15 @@ export const processVoiceCommand = async (req, res) => {
         };
         break;
       default:
-        result = { message: "Command not recognized", originalCommand: command };
+        // Default to movie search if command not recognized
+        result = await handleSearchCommand(command, 'movie', req.user);
     }
     
     return res.status(200).json({
       success: true,
       message: 'Voice command processed successfully',
-      result: result
+      result: result,
+      action: action
     });
   } catch (error) {
     console.error('Error processing voice command:', error);
@@ -47,10 +48,10 @@ export const processVoiceCommand = async (req, res) => {
       error: error.message 
     });
   }
-};
+}
 
 // Helper function to determine the action based on the command
-const determineAction = (command) => {
+function determineAction(command) {
   const commandLower = command.toLowerCase();
   
   // Check for search commands
@@ -86,7 +87,7 @@ const determineAction = (command) => {
     if (commandLower.includes('home')) {
       destination = '/';
     } else if (commandLower.includes('history')) {
-      destination = '/history';
+      destination = '/search-history';
     } else if (commandLower.includes('profile')) {
       destination = '/profile';
     }
@@ -100,10 +101,10 @@ const determineAction = (command) => {
     term: command.trim(),
     mediaType: 'movie'
   };
-};
+}
 
 // Helper function to extract search terms
-const extractSearchTerm = (command) => {
+function extractSearchTerm(command) {
   const searchPhrases = [
     'search for', 'find', 'look for', 'show me', 
     'search', 'find me', 'look up', 'show'
@@ -120,10 +121,10 @@ const extractSearchTerm = (command) => {
   
   // If no search phrase is found, return the whole command
   return command.trim();
-};
+}
 
 // Handle search commands by type
-const handleSearchCommand = async (searchTerm, mediaType) => {
+async function handleSearchCommand(searchTerm, mediaType, user) {
   // Remove filler words from the search term
   const cleanedTerm = searchTerm
     .replace(/^(the|a|an) /i, '')
@@ -135,22 +136,43 @@ const handleSearchCommand = async (searchTerm, mediaType) => {
   }
   
   try {
+    let apiEndpoint;
     let results;
     
     switch (mediaType) {
       case 'tv':
-        // Use your existing search TV shows function
-        results = await searchTvShows(cleanedTerm);
+        apiEndpoint = `https://api.themoviedb.org/3/search/tv?query=${encodeURIComponent(cleanedTerm)}&include_adult=false&language=en-US&page=1`;
         break;
       case 'person':
-        // Use your existing search person function
-        results = await searchPerson(cleanedTerm);
+        apiEndpoint = `https://api.themoviedb.org/3/search/person?query=${encodeURIComponent(cleanedTerm)}&include_adult=false&language=en-US&page=1`;
         break;
       case 'movie':
       default:
-        // Use your existing search movies function
-        results = await searchMovies(cleanedTerm);
+        apiEndpoint = `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(cleanedTerm)}&include_adult=false&language=en-US&page=1`;
         break;
+    }
+    
+    const response = await fetchFromTMDB(apiEndpoint);
+    results = response.results;
+    
+    // Add to search history if there are results and user is logged in
+    if (results.length > 0 && user) {
+      const firstResult = results[0];
+      try {
+        await User.findByIdAndUpdate(user._id, {
+          $push: {
+            searchHistory: {
+              id: firstResult.id,
+              image: mediaType === 'person' ? firstResult.profile_path : firstResult.poster_path,
+              title: firstResult.title || firstResult.name,
+              searchType: mediaType,
+              createdAt: new Date(),
+            },
+          },
+        });
+      } catch (err) {
+        console.error('Error updating search history:', err);
+      }
     }
     
     return {
@@ -163,4 +185,6 @@ const handleSearchCommand = async (searchTerm, mediaType) => {
     console.error('Search error:', error);
     throw new Error(`Failed to search for "${cleanedTerm}"`);
   }
-};
+}
+
+export default { processVoiceCommand };
