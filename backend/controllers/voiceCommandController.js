@@ -1,4 +1,3 @@
-// Backend/controllers/voiceCommandController.js
 import { fetchFromTMDB } from "../services/tmdb.service.js";
 import { User } from "../models/user.model.js";
 

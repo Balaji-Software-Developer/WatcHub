@@ -1,4 +1,3 @@
-// backend/routes/voiceRoutes.js
 import express from 'express';
 import * as voiceController from '../controllers/voiceCommandController.js';
 

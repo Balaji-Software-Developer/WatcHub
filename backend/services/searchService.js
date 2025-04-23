@@ -1,5 +1,3 @@
-// backend/services/searchService.js
-
 import { fetchFromTMDB } from "../services/tmdb.service.js";
 
 // Helper functions that can be used by other controllers
