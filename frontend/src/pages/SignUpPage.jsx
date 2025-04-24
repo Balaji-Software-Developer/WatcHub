@@ -51,7 +51,7 @@ const SignUpPage = () => {
 							<input
 								type='text'
 								className='w-full px-3 py-2 mt-1 border border-gray-700 rounded-md bg-transparent text-white focus:outline-none focus:ring'
-								placeholder='Smart'
+								placeholder='Enter Your Name'
 								id='username'
 								value={username}
 								onChange={(e) => setUsername(e.target.value)}
